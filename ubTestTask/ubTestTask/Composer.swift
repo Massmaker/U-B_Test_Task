@@ -19,7 +19,12 @@ class Composer {
         let vc = ListScreenViewController()
         
         let presenter = ListScreenPresenter(viewController: vc)
-        let worker = ListScreenWorker()
+        #warning("Remove the stub and supply a real CoreDataService instance")
+        let persistentStore = CoreDataServiceStub()
+        
+        let storageService = PostsStorageService(persistentStore: persistentStore)
+        
+        let worker = ListScreenWorker(cache: storageService)
         
         let interactor = ListScreenInteractor(presenter: presenter, worker: worker)
         

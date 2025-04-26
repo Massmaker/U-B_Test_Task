@@ -14,8 +14,25 @@ class DetailsScreenViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-       
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        
+        
+    }
+    
+    override func willTransition(to newCollection: UITraitCollection, with coordinator: any UIViewControllerTransitionCoordinator) {
+        super.willTransition(to: newCollection, with: coordinator)
+        guard self.traitCollection.horizontalSizeClass != newCollection.horizontalSizeClass else {
+            return
+        }
+        
+        setupUI()
+    }
+    
+    private func setupUI() {
+        
     }
 
 }
