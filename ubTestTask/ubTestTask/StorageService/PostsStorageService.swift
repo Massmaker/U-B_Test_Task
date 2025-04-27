@@ -86,7 +86,6 @@ class PostsStorageService<P>:PostListDataModelStorage where P:ListPostsPersisten
 
         //backup to persisent store
         persistentStore.appendListPostItems(toBeAppended)
-        
     }
     
 }

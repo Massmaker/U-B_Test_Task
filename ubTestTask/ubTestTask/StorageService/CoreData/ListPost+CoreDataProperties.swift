@@ -16,8 +16,8 @@ extension ListPost {
         return NSFetchRequest<ListPost>(entityName: "ListPost")
     }
 
-    @NSManaged public var id: String
-    @NSManaged public var title: String
+    @NSManaged public var id: String?
+    @NSManaged public var title: String?
     @NSManaged public var image: ListPostImage?
     @NSManaged public var details: PostDetails?
 

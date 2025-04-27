@@ -7,7 +7,7 @@
         <relationship name="image" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="ListPostImage" inverseName="listPost" inverseEntity="ListPostImage"/>
     </entity>
     <entity name="ListPostImage" representedClassName="ListPostImage" syncable="YES">
-        <attribute name="data" optional="YES" attributeType="Binary"/>
+        <attribute name="data" optional="YES" attributeType="Binary" storedInTruthFile="YES"/>
         <attribute name="imageURL" attributeType="String"/>
         <relationship name="listPost" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ListPost" inverseName="image" inverseEntity="ListPost"/>
     </entity>
@@ -17,7 +17,7 @@
         <relationship name="post" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ListPost" inverseName="details" inverseEntity="ListPost"/>
     </entity>
     <entity name="PostDetailsImage" representedClassName="PostDetailsImage" syncable="YES">
-        <attribute name="data" optional="YES" attributeType="Binary"/>
+        <attribute name="data" optional="YES" attributeType="Binary" storedInTruthFile="YES"/>
         <attribute name="imageURL" optional="YES" attributeType="String"/>
         <relationship name="postDetails" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PostDetails" inverseName="image" inverseEntity="PostDetails"/>
     </entity>

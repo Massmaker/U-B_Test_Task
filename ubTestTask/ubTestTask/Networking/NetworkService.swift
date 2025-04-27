@@ -22,6 +22,11 @@ enum NetworkingError:Error {
     case badResponseData
 }
 
+enum NetworkAPICallerError:Error {
+    case decodingError
+    case networkingError(NetworkingError)
+}
+
 class NetworkService {
     let apiKey:String
     private let decoder:JSONDecoder
@@ -75,6 +80,7 @@ extension NetworkService:NetworkAPICaller {
         let api = API.bySOL(page: page, cameraType: .NAVCAM)
         var queryParameters = api.urlParameters
         queryParameters["api_key"] = self.apiKey
+        queryParameters["sol"] = 1000
         
         guard var url = URL(string: api.baseURL) else {
             return
@@ -114,8 +120,31 @@ extension NetworkService:NetworkAPICaller {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
         
-        let task = self.session.dataTask(with: urlRequest, completionHandler: {optData, optResponse, optError in
+        let task = self.session.dataTask(with: urlRequest, completionHandler: {[weak self] optData, optResponse, optError in
             
+            guard let self else { return }
+            
+            let result = self.handledBadResponse(response: optResponse, with: optData)
+            
+            switch result {
+            case .failure(let networkingError):
+                completion(.failure(NetworkAPICallerError.networkingError(networkingError)))
+            case .success(let data):
+                do {
+                    let batchResponse:BatchItemsResopnse = try self.decoder.decode(BatchItemsResopnse.self, from: data)
+                    
+                    guard !batchResponse.photos.isEmpty else {
+                        completion(.success([PhotoInfo]()))
+                        return
+                    }
+                    
+                    completion(.success(batchResponse.photos))
+                    
+                }
+                catch {
+                    completion(.failure(NetworkAPICallerError.decodingError) )
+                }
+            }
         })
         
         task.resume()

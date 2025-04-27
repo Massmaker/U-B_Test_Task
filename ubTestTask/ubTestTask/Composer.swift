@@ -54,7 +54,7 @@ class Composer {
         
         let presenter = ListScreenPresenter(viewController: vc)
         #warning("Remove the stub and supply a real CoreDataService instance")
-        let persistentStore = CoreDataServiceStub()
+        let persistentStore = CoreDataService()
         
         let storageService = PostsStorageService(persistentStore: persistentStore)
         

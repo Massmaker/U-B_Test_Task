@@ -16,8 +16,9 @@ class ListScreenViewController: UIViewController {
     var interactor: (any ListScreenInteractorType)?
     var router: (any ToDetailsRouterType)?
     
-    private var isIpad:Bool = false
+    
     private var postItems:[PostListDataModel] = []
+    private var tableView:UITableView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,7 +29,10 @@ class ListScreenViewController: UIViewController {
         
         print("\(#function) vertical: \(verticalClass), horizontal: \(horizontalClass)")
         
-        isIpad = (verticalClass == .regular && horizontalClass == .regular)
+        
+        configureTableView()
+        
+        
         
         interactor?.onViewDidLoad()
     }
@@ -57,6 +61,31 @@ class ListScreenViewController: UIViewController {
         super.viewWillAppear(animated)
         
         interactor?.onViewWillAppear(animated)
+    }
+    
+    private func configureTableView() {
+        let tableView = UITableView()
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(tableView)
+        
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
+        ])
+        
+        self.tableView = tableView
+        
+        tableView.register(PostListCell.self, forCellReuseIdentifier: PostListCell.reuseIdentifier)
+        
+//        let ds = UITableViewDiffableDataSource<<#SectionIdentifierType: Hashable & Sendable#>, ItemIdentifierType>(tableView: tableView) { tableView, indexPath, itemIdentifier in
+//            
+//        }
+        
+        
+        
     }
 }
 

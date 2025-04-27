@@ -5,11 +5,20 @@
 //  Created by Ivan_Tests on 26.04.2025.
 //
 
-typealias ListPostsCompletion = (Result<[PostListDataModel], any Error>) -> ()
+
+enum FetchError:Error {
+    case noDataFetched
+    case partialResultFetched([PostListDataModel])
+}
+
+typealias ListPostsCompletion = (Result<[PostListDataModel], FetchError>) -> ()
 
 protocol ListScreenDataWorkerType {
+    var pageSize:Int {get}
+    var currentPage:Int {get}
     func fetchInitialData(completion:ListPostsCompletion)
     func fetchNextPageData(completion:ListPostsCompletion)
+    func receiveLoadedInfos(_ infos:[PhotoInfo])
 }
 
 protocol PostListDataModelStorage {
@@ -26,7 +35,7 @@ protocol PostListDataModelStorage {
 class ListScreenWorker<C:PostListDataModelStorage>: ListScreenDataWorkerType {
     
     private(set) var pageSize:Int = 20
-    private var currentPage:Int = 0
+    private(set) var currentPage:Int = 0
     private var cache:C
     
     
@@ -51,28 +60,28 @@ class ListScreenWorker<C:PostListDataModelStorage>: ListScreenDataWorkerType {
         do {
             let fetchedBatch = try cache.getListPosts(page: self.currentPage,
                                                       pageSize: self.pageSize)
-            let postsWithoutImage = fetchedBatch.filter { postListDataModel in
-                postListDataModel.imageData == nil
-            }
-            
+           
             completion(.success(fetchedBatch))
-            
-            if !postsWithoutImage.isEmpty {
-                loadImagesForPosts(postsWithoutImage)
-            }
         }
         catch {
             switch error {
             case .noData:
-                //try loading data
-                print("Trying to load some Posts for List...")
+                completion(.failure(.noDataFetched))
             case .partialResult(let postListDataModels):
-                completion(.success(postListDataModels))
+                completion(.failure(.partialResultFetched(postListDataModels)))
             }
         }
     }
     
-    private func loadImagesForPosts(_ posts:[PostListDataModel]){
+    func receiveLoadedInfos(_ infos:[PhotoInfo]) {
+        let listDataModels:[PostListDataModel] = infos.map { photoInfo in
+            let id:String = "\(photoInfo.id)"
+            //let imageURL:String = photoInfo.imgSrc
+            let name = photoInfo.rover.name
+            let date = photoInfo.earthDate
+            return PostListDataModel(id: NonEmptyContainer<String>(id)!, title: NonEmptyContainer<String>("\(name)_\(date)")!, imageData: nil)
+        }
         
+        cache.saveListPosts(listDataModels)
     }
 }

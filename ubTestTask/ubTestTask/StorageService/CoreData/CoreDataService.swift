@@ -71,7 +71,7 @@ extension CoreDataService: ListPostsPersistentStoreType {
     
     
     func appendListPostItems(_ listPosts: [PostListDataModel]) {
-        self.writeContext.perform {[unowned writeContext] in
+        self.writeContext.perform {[unowned self] in
             
             //context.insert(T##object: NSManagedObject##NSManagedObject)
             
@@ -81,20 +81,27 @@ extension CoreDataService: ListPostsPersistentStoreType {
                 listPost.title = postListDataModel.title.value
                 listPost.id = postListDataModel.id.value
                 
-                let imageEntity = ListPostImage(context: self.writeContext)
-                imageEntity.listPost = listPost
-                
-                listPost.image = imageEntity
+//                let imageEntity = ListPostImage(context: self.writeContext)
+//                imageEntity.listPost = listPost
+//                
+//                listPost.image = imageEntity
             }
             
             
+            guard writeContext.hasChanges else {
+                return
+            }
             
             do {
+                
                 try writeContext.save()
+                #if DEBUG
+                print("\(self) \(#function) Saved postList infos")
+                #endif
             }
             catch {
                 #if DEBUG
-                print("Failed to save post list items: \(error.localizedDescription)")
+                print("Failed to save post list items: \(error)")
                 #endif
             }
         }
@@ -110,10 +117,13 @@ extension CoreDataService: ListPostsPersistentStoreType {
             let listPosts = try mainQueueContext.fetch(fetchRequest)
             return listPosts.compactMap { listPost in
                 
-                let postId = listPost.id
                 
-                if let idContainer = NonEmptyContainer(postId),
-                   let titleContainer = NonEmptyContainer(listPost.title) {
+                
+                if
+                    let postId = listPost.id,
+                    let idContainer = NonEmptyContainer(postId),
+                    let title = listPost.title,
+                    let titleContainer = NonEmptyContainer(title) {
                     return PostListDataModel(id: idContainer,
                                              title: titleContainer,
                                              imageData:listPost.image?.data )
@@ -125,7 +135,7 @@ extension CoreDataService: ListPostsPersistentStoreType {
             }
         }
         catch {
-            
+            print("Fetch error: \(error)")
         }
         
         return []

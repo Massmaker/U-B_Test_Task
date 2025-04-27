@@ -17,8 +17,8 @@ extension PostDetailsImage {
     }
 
     @NSManaged public var data: Data?
-    @NSManaged public var imageURL: String
-    @NSManaged public var postDetails: PostDetails
+    @NSManaged public var imageURL: String?
+    @NSManaged public var postDetails: PostDetails?
 
 }
 

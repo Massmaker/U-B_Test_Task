@@ -17,8 +17,8 @@ extension ListPostImage {
     }
 
     @NSManaged public var data: Data?
-    @NSManaged public var imageURL: String
-    @NSManaged public var listPost: ListPost
+    @NSManaged public var imageURL: String?
+    @NSManaged public var listPost: ListPost?
 
 }
 

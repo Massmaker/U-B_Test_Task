@@ -16,8 +16,8 @@ extension PostDetails {
         return NSFetchRequest<PostDetails>(entityName: "PostDetails")
     }
 
-    @NSManaged public var details: String
-    @NSManaged public var post: ListPost
+    @NSManaged public var details: String?
+    @NSManaged public var post: ListPost?
     @NSManaged public var image: PostDetailsImage?
 
 }
