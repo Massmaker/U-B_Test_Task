@@ -8,16 +8,33 @@
 import Foundation
 
 /// a model for displaying a list item with a small image size for UI performance ( list, scrolling...)
-struct PostListDataModel {
+struct PostListDataModel: ImageContainer  {
     let id:NonEmptyContainer<String>
     let title:NonEmptyContainer<String>
-    let imageData:Data
+    var imageData:Data?
 }
 
 /// a model for displaying larger size image and some additional details text
-struct PostDetailsDataModel {
+struct PostDetailsDataModel: ImageContainer {
     let id:NonEmptyContainer<String>
     let title:NonEmptyContainer<String>
     let details:NonEmptyContainer<String>
-    let imageData:Data
+    let imageData:Data?
 }
+
+import UIKit
+protocol ImageContainer {
+    var imageData:Data? { get }
+    var image:UIImage { get }
+}
+
+extension ImageContainer {
+    var image:UIImage {
+        if let data = imageData, let dataImage = UIImage(data: data) {
+            return dataImage
+        }
+        
+        return UIImage(named: "PostImagePlaceHolder")!
+    }
+}
+

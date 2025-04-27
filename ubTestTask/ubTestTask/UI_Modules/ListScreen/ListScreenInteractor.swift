@@ -23,17 +23,19 @@ protocol ListScreenInteractorType:InteractorType {
     func loadNextBatch()
 }
 
-class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType> : ListScreenInteractorType {
+
+class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType, N:NetworkAPICaller> : ListScreenInteractorType {
     
     
     private var presenter: P
     private var worker:W
+    private let apiCaller:N
     
     
-    
-    init(presenter: P, worker:W) {
+    init(presenter: P, worker:W, apiCaller:N) {
         self.presenter = presenter
         self.worker = worker
+        self.apiCaller = apiCaller
     }
     
     func onViewDidLoad() {
@@ -51,9 +53,15 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
     private func handleFetchResult(_ result:Result<[PostListDataModel], any Error>) {
         switch result {
         case .success(let fetchedItems):
-            print("Interactor handling items: \(fetchedItems.count)")
+            
+            presenter.receiveLoadedPostItems(fetchedItems)
+            //start loading images for loaded posts
         case .failure(let error):
             print("Interactor handling error: \(error)")
         }
+    }
+    
+    private func loadImageData(for postItem:PostListDataModel) {
+        
     }
 }

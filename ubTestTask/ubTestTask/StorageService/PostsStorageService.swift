@@ -72,10 +72,21 @@ class PostsStorageService<P>:PostListDataModelStorage where P:ListPostsPersisten
         
         // store in-memory
         self.cachedPostIDs.formUnion(newPostIdsSet)
-        self.cachedPosts.append(contentsOf: posts)
         
+        let toBeAppended:[PostListDataModel]
+        
+        if newPostIdsSet.count == posts.count {
+            toBeAppended = posts
+        }
+        else {
+            toBeAppended = posts.filter { newPostIdsSet.contains( $0.id.value) }
+        }
+        
+        self.cachedPosts.append(contentsOf: toBeAppended)
 
         //backup to persisent store
+        persistentStore.appendListPostItems(toBeAppended)
+        
     }
     
 }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23788" systemVersion="24E263" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="1">
+    <entity name="ListPost" representedClassName="ListPost" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="title" attributeType="String"/>
+        <relationship name="details" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="PostDetails" inverseName="post" inverseEntity="PostDetails"/>
+        <relationship name="image" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="ListPostImage" inverseName="listPost" inverseEntity="ListPostImage"/>
+    </entity>
+    <entity name="ListPostImage" representedClassName="ListPostImage" syncable="YES">
+        <attribute name="data" optional="YES" attributeType="Binary"/>
+        <attribute name="imageURL" attributeType="String"/>
+        <relationship name="listPost" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ListPost" inverseName="image" inverseEntity="ListPost"/>
+    </entity>
+    <entity name="PostDetails" representedClassName="PostDetails" syncable="YES">
+        <attribute name="details" optional="YES" attributeType="String"/>
+        <relationship name="image" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="PostDetailsImage" inverseName="postDetails" inverseEntity="PostDetailsImage"/>
+        <relationship name="post" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ListPost" inverseName="details" inverseEntity="ListPost"/>
+    </entity>
+    <entity name="PostDetailsImage" representedClassName="PostDetailsImage" syncable="YES">
+        <attribute name="data" optional="YES" attributeType="Binary"/>
+        <attribute name="imageURL" optional="YES" attributeType="String"/>
+        <relationship name="postDetails" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PostDetails" inverseName="image" inverseEntity="PostDetails"/>
+    </entity>
+</model>

@@ -7,13 +7,17 @@
 
 import UIKit
 
-
+protocol ListScreenViewControllerType: UIViewController {
+    func receivePostItems(_ items:[PostListDataModel])
+    func updatePost(id:Int, with imageData:Data)
+}
 
 class ListScreenViewController: UIViewController {
     var interactor: (any ListScreenInteractorType)?
     var router: (any ToDetailsRouterType)?
     
     private var isIpad:Bool = false
+    private var postItems:[PostListDataModel] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -54,7 +58,21 @@ class ListScreenViewController: UIViewController {
         
         interactor?.onViewWillAppear(animated)
     }
+}
 
+extension ListScreenViewController : ListScreenViewControllerType {
+    func receivePostItems(_ items:[PostListDataModel]) {
+        self.postItems.append(contentsOf: items)
+    }
+    
+    func updatePost(id:Int, with imageData:Data) {
+        if let index = self.postItems.firstIndex(where: {$0.id.value == "\(id)"}) {
+            var toUpdate = self.postItems[index]
+            
+            toUpdate.imageData = imageData
+            self.postItems[index] = toUpdate
+        }
+    }
 }
 
 extension UIUserInterfaceSizeClass: @retroactive CustomStringConvertible {
