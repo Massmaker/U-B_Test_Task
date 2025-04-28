@@ -21,6 +21,7 @@ extension InteractorType {
 
 protocol ListScreenInteractorType:InteractorType {
     func loadNextBatch()
+    func onItemSelected(at index:Int)
 }
 
 
@@ -48,6 +49,10 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
         worker.fetchNextPageData { [weak self] fetchResult in
             self?.handleFetchResult(fetchResult)
         }
+    }
+    
+    func onItemSelected(at index:Int) {
+        //TODO: TODO: Navigate to Details Screen
     }
     
     private func handleFetchResult(_ result:Result<[PostListDataModel], FetchError>) {

@@ -8,10 +8,24 @@
 import Foundation
 
 /// a model for displaying a list item with a small image size for UI performance ( list, scrolling...)
-struct PostListDataModel: ImageContainer  {
+struct PostListDataModel: ImageContainer, Hashable  {
+    
+    
     let id:NonEmptyContainer<String>
     let title:NonEmptyContainer<String>
     var imageData:Data?
+    
+    static func == (lhs: PostListDataModel, rhs: PostListDataModel) -> Bool {
+        lhs.id.value == rhs.id.value && lhs.title.value == rhs.id.value && lhs.imageData == rhs.imageData
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id.value)
+        hasher.combine(title.value)
+        if let imageData {
+            hasher.combine(imageData)
+        }
+    }
 }
 
 /// a model for displaying larger size image and some additional details text

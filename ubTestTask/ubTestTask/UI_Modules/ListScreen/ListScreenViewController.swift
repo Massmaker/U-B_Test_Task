@@ -13,12 +13,18 @@ protocol ListScreenViewControllerType: UIViewController {
 }
 
 class ListScreenViewController: UIViewController {
+    
+    enum Section {
+        case main
+    }
+    
     var interactor: (any ListScreenInteractorType)?
     var router: (any ToDetailsRouterType)?
     
     
     private var postItems:[PostListDataModel] = []
     private var tableView:UITableView!
+    private var dataSource:UITableViewDiffableDataSource<Section,PostListDataModel>!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -80,28 +86,74 @@ class ListScreenViewController: UIViewController {
         
         tableView.register(PostListCell.self, forCellReuseIdentifier: PostListCell.reuseIdentifier)
         
-//        let ds = UITableViewDiffableDataSource<<#SectionIdentifierType: Hashable & Sendable#>, ItemIdentifierType>(tableView: tableView) { tableView, indexPath, itemIdentifier in
-//            
-//        }
+        let ds = UITableViewDiffableDataSource<Section, PostListDataModel>(tableView: tableView) {[unowned self] tableView, indexPath, itemIdentifier in
+            guard let postListCell = tableView.dequeueReusableCell(withIdentifier: PostListCell.reuseIdentifier, for: indexPath) as? PostListCell else {
+                return UITableViewCell(style: .value2, reuseIdentifier: "DefaultCellIdentifier")
+            }
+            
+            let postItem = postItems[indexPath.row]
+            let image = postItem.image
+            postListCell.setImage(image)
+            
+            let title = postItem.title.value
+            postListCell.setText(title)
+            
+            return postListCell
+        }
+        self.dataSource = ds
         
+        var snapshot = ds.snapshot()
+        snapshot.appendSections([Section.main])
+        snapshot.appendItems([PostListDataModel](), toSection: Section.main)
+        ds.apply(snapshot)
         
-        
+        tableView.dataSource = ds
+        tableView.delegate = self
     }
 }
 
 extension ListScreenViewController : ListScreenViewControllerType {
     func receivePostItems(_ items:[PostListDataModel]) {
         self.postItems.append(contentsOf: items)
+        
+        var snapshot = self.dataSource.snapshot()
+        snapshot.appendItems(items, toSection: .main)
+        dataSource.apply(snapshot, animatingDifferences: true)
     }
     
     func updatePost(id:Int, with imageData:Data) {
+        
+        
         if let index = self.postItems.firstIndex(where: {$0.id.value == "\(id)"}) {
             var toUpdate = self.postItems[index]
             
             toUpdate.imageData = imageData
             self.postItems[index] = toUpdate
+            let indexPath = IndexPath(row: index, section: 0)
+            
+            
+            if var listModel = dataSource.itemIdentifier(for: indexPath) {
+                var snapshot = dataSource.snapshot()
+                listModel.imageData = imageData
+                snapshot.reloadItems([listModel])
+                dataSource.apply(snapshot, animatingDifferences: true)
+            }
+            
         }
+        
+        
+        
+        
+        
     }
+}
+
+extension ListScreenViewController : UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        self.interactor?.onItemSelected(at: indexPath.row)
+    }
+    
 }
 
 extension UIUserInterfaceSizeClass: @retroactive CustomStringConvertible {
