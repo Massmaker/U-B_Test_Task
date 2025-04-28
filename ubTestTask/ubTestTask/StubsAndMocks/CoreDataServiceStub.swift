@@ -8,13 +8,12 @@
 import Foundation
 
 class CoreDataServiceStub:ListPostsPersistentStoreType {
-    func appendListPostItems(_ listPosts: [PostListDataModel]) {
-        
-    }
-    
-    func fetchListPostItems(offset: Int, pageSize: Int) -> [PostListDataModel] {
+    func fetchListPostItems(offset: Int, pageSize: Int) throws(PersistentStoreError) -> [PostListDataModel] {
         return []
     }
     
+    func appendListPostItems(_ listPosts: [PhotoInfo]) {
+        
+    }
     
 }

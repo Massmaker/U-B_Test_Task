@@ -23,7 +23,7 @@ protocol ListScreenDataWorkerType {
 
 protocol PostListDataModelStorage {
     func getListPosts(page:Int, pageSize:Int) throws (PostListDataModelStorageError) -> [PostListDataModel]
-    func saveListPosts(_ posts:[PostListDataModel])
+    func saveListPosts(_ posts:[PhotoInfo])
 }
 
 
@@ -34,12 +34,12 @@ protocol PostListDataModelStorage {
  */
 class ListScreenWorker<C:PostListDataModelStorage>: ListScreenDataWorkerType {
     
-    private(set) var pageSize:Int = 20
+    private(set) var pageSize:Int = 10
     private(set) var currentPage:Int = 0
     private var cache:C
     
     
-    init(pageSize: Int = 20, currentPage: Int = 0, cache: C) {
+    init(pageSize: Int = 10, currentPage: Int = 0, cache: C) {
         self.pageSize = pageSize
         self.currentPage = currentPage
         self.cache = cache
@@ -74,14 +74,6 @@ class ListScreenWorker<C:PostListDataModelStorage>: ListScreenDataWorkerType {
     }
     
     func receiveLoadedInfos(_ infos:[PhotoInfo]) {
-        let listDataModels:[PostListDataModel] = infos.map { photoInfo in
-            let id:String = "\(photoInfo.id)"
-            //let imageURL:String = photoInfo.imgSrc
-            let name = photoInfo.rover.name
-            let date = photoInfo.earthDate
-            return PostListDataModel(id: NonEmptyContainer<String>(id)!, title: NonEmptyContainer<String>("\(name)_\(date)")!, imageData: nil)
-        }
-        
-        cache.saveListPosts(listDataModels)
+        cache.saveListPosts(infos)
     }
 }

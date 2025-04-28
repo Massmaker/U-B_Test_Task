@@ -210,3 +210,9 @@ struct RoverInfo:Decodable {
     private(set) var name:String
     private(set) var status:String
 }
+
+extension PhotoInfo {
+    var displayTitle:String {
+        "\(rover.name)_\(rover.status)_\(camera.fullName)_\(earthDate)"
+    }
+}

@@ -53,7 +53,7 @@ class Composer {
         let vc = ListScreenViewController()
         
         let presenter = ListScreenPresenter(viewController: vc)
-        #warning("Remove the stub and supply a real CoreDataService instance")
+    
         let persistentStore = CoreDataService()
         
         let storageService = PostsStorageService(persistentStore: persistentStore)
@@ -70,7 +70,7 @@ class Composer {
     
     class func createDetailsScreenSuite(for postId:NonEmptyContainer<String>) -> DetailsScreenViewController {
         let detailsVC = DetailsScreenViewController()
-        #warning("Finish the setup")
+        #warning("Finish the setup for Details screen")
         //TODO: TODO: supply the interactor to a View Controller
         detailsVC.interactor = nil
         
