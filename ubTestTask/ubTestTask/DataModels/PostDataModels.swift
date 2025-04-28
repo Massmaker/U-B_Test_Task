@@ -39,16 +39,16 @@ struct PostDetailsDataModel: ImageContainer {
 import UIKit
 protocol ImageContainer {
     var imageData:Data? { get }
-    var image:UIImage { get }
+    var image:UIImage? { get }
 }
 
 extension ImageContainer {
-    var image:UIImage {
+    var image:UIImage? {
         if let data = imageData, let dataImage = UIImage(data: data) {
             return dataImage
         }
-        
-        return UIImage(named: "PostImagePlaceHolder")!
+        return nil
+        //return UIImage(named: "PostImagePlaceHolder")!
     }
 }
 

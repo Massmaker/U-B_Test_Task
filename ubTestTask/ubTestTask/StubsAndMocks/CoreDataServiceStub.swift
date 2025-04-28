@@ -8,6 +8,14 @@
 import Foundation
 
 class CoreDataServiceStub:ListPostsPersistentStoreType {
+    func updateImageData(_ data: Data?, forListPostWith id: String, saveImmadiately: Bool) {
+        
+    }
+    
+    func saveIfNeeded() {
+        
+    }
+    
     func fetchListPostItems(offset: Int, pageSize: Int) throws(PersistentStoreError) -> [PostListDataModel] {
         return []
     }

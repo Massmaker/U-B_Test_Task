@@ -16,6 +16,7 @@ class PostListCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
         imageView?.image = UIImage(named: "PostImagePlaceHolder")
+        creatContentConfig()
     }
     
     required init?(coder: NSCoder) {
@@ -30,7 +31,10 @@ class PostListCell: UITableViewCell {
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        
+        if var config = self.contentConfiguration as? UIListContentConfiguration {
+            config.image = nil
+            self.contentConfiguration = config
+        }
     }
     
     override func setSelected(_ selected: Bool, animated: Bool) {
@@ -40,11 +44,33 @@ class PostListCell: UITableViewCell {
     }
     
     func setImage(_ image:UIImage) {
-        imageView?.image = image
+        if var config = self.contentConfiguration as? UIListContentConfiguration {
+            config.image = image
+            self.contentConfiguration = config
+        }
     }
     
     func setText(_ text:String) {
-        self.textLabel?.text = text
+        if var config = self.contentConfiguration as? UIListContentConfiguration{
+            config.text = text
+            
+            self.contentConfiguration = config
+        }
     }
 
+    func setSecondaryText(_ text:String) {
+        if var config = self.contentConfiguration as? UIListContentConfiguration{
+            config.secondaryText = text
+            
+            self.contentConfiguration = config
+        }
+    }
+    
+    private func creatContentConfig() {
+        var config = self.defaultContentConfiguration()
+        config.imageProperties.maximumSize = CGSize(width: 100 , height: 100)
+        config.imageProperties.cornerRadius = 10
+        self.contentConfiguration = config
+        
+    }
 }

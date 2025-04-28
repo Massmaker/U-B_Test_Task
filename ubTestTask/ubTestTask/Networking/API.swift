@@ -8,9 +8,12 @@
 import Foundation
 
 enum CameraType:String {
-    case NAVCAM, PANCAM, FHAZ, RHAZ
-    var lowercasedValue:String {
-        self.rawValue.lowercased()
+    case NAVCAM, PANCAM, FHAZ, RHAZ, all
+    var lowercasedValue:String? {
+        if case .all = self {
+            return nil
+        }
+        return self.rawValue.lowercased()
     }
 }
 
@@ -25,7 +28,12 @@ extension API {
     var urlParameters:[String:Any] {
         switch self {
         case .bySOL(let page, let cameraType):
-            return ["page":page, "camera":cameraType.lowercasedValue]
+            if let cameraValue = cameraType.lowercasedValue {
+                return ["page":page, "camera":cameraValue]
+            }
+            else {
+                return ["page":page]
+            }
         }
     }
     

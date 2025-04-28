@@ -19,6 +19,8 @@ enum PersistentStoreError:Error {
 protocol ListPostsPersistentStoreType {
     func appendListPostItems(_ listPosts:[PhotoInfo])
     func fetchListPostItems(offset:Int, pageSize:Int) throws (PersistentStoreError) -> [PostListDataModel]
+    func updateImageData(_ data:Data?, forListPostWith id:String, saveImmadiately:Bool)
+    func saveIfNeeded()
 }
 
 class PostsStorageService<P:ListPostsPersistentStoreType> {
@@ -188,12 +190,22 @@ extension PostsStorageService: PostListDataModelStorage {
         
         let range = offset..<(offset + pageSize)
         
-        let result = Array(cachedPosts[range])
+        let result = Array(cachedPosts[safe:range])
         
         if result.count < pageSize {
             throw .partialResult(result)
         }
         
         return result
+    }
+    
+    
+    func setImageData(_ data: Data, forListPostId listPostId: Int) {
+        
+        persistentStore.updateImageData(data, forListPostWith: "\(listPostId)", saveImmadiately:false)
+    }
+    
+    func saveIfNeeded() {
+        persistentStore.saveIfNeeded()
     }
 }

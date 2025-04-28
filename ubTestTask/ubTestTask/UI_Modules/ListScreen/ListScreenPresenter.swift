@@ -28,26 +28,18 @@ class ListScreenPresenter:ListScreenPresenterType {
     }
     
     func receiveLoadedPostItems(_ postItems:[PostListDataModel]) {
-        self.listVC?.receivePostItems(postItems)
+        DispatchQueue.main.async {[weak self] in
+            self?.listVC?.receivePostItems(postItems)
+        }
+        
     }
     
     func updatePost(postId:Int, withImageData data:Data) {
-        guard let image = UIImage(data: data, scale: UIScreen.main.scale) else {
-            return
-        }
+//        guard let image = UIImage(data: data, scale: UIScreen.main.scale) else {
+//            return
+//        }
         
-        if image.size.width > 100 || image.size.height > 100 {
-            //resize image to a smaller one
-            let smallerImage = image.aspectFittedToHeight(100, newWidth: 100)
-            
-            guard let imageData = smallerImage.jpegData(compressionQuality: 1.0) else {
-                listVC?.updatePost(id: postId, with: data)
-                return
-            }
-            
-            listVC?.updatePost(id: postId, with: imageData)
-            
-        }
+        listVC?.updatePost(id: postId, with: data)
         
     }
 }
@@ -59,14 +51,15 @@ extension UIImage
     /// of the image, aspect-fitted to that height.
 
     func aspectFittedToHeight(_ newHeight: CGFloat, newWidth:CGFloat) -> UIImage {
-       
-        let scale = newHeight / self.size.height
-        let newWidth = self.size.width * scale
-        let newSize = CGSize(width: newWidth, height: newHeight)
+        let minDimension = min(newHeight, newWidth)
+        //if minDimension == newHeight
+        
+        let newSize = CGSize(width: minDimension, height: minDimension)
         let renderer = UIGraphicsImageRenderer(size: newSize)
 
-        return renderer.image { _ in
+        let image = renderer.image { _ in
             self.draw(in: CGRect(origin: .zero, size: newSize))
         }
+        return image
     }
 }

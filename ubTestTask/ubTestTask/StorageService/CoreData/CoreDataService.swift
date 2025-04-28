@@ -7,6 +7,13 @@
 
 import CoreData
 
+protocol PostListDataModelStorage {
+    func getListPosts(page:Int, pageSize:Int) throws (PostListDataModelStorageError) -> [PostListDataModel]
+    func saveListPosts(_ posts:[PhotoInfo])
+    func setImageData(_ data:Data, forListPostId listPostId:Int)
+    func saveIfNeeded()
+}
+
 class CoreDataService {
     private var mainQueueContext:NSManagedObjectContext
     private var writeContext:NSManagedObjectContext
@@ -65,11 +72,30 @@ class CoreDataService {
         self.writeContext = parentContext
         self.mainQueueContext = mainContext
     }
+    
+    private func saveContex(andWait:Bool = false) {
+        
+        let saveOp = {[unowned self] in
+            do {
+                try self.writeContext.save()
+            }
+            catch {
+#if DEBUG
+                print("\(#function) Failed to save private context: \(error)")
+#endif
+            }
+        }
+        
+        if andWait {
+            self.writeContext.performAndWait(saveOp)
+        }
+        else {
+            self.writeContext.perform(saveOp)
+        }
+    }
 }
 
 extension CoreDataService: ListPostsPersistentStoreType {
-    
-    
     
     func appendListPostItems(_ listPosts: [PhotoInfo]) {
         self.writeContext.perform {[unowned self] in
@@ -86,8 +112,8 @@ extension CoreDataService: ListPostsPersistentStoreType {
                 //assign relations
                 imageEntity.listPost = listPost
                 listPost.image = imageEntity
-                self.writeContext.insert(listPost)
-                self.writeContext.insert(imageEntity)
+//                self.writeContext.insert(listPost)
+//                self.writeContext.insert(imageEntity)
             }
             
             
@@ -95,18 +121,7 @@ extension CoreDataService: ListPostsPersistentStoreType {
                 return
             }
             
-            do {
-                
-                try writeContext.save()
-                #if DEBUG
-                print("\(self) \(#function) Saved postList infos")
-                #endif
-            }
-            catch {
-                #if DEBUG
-                print("Failed to save post list items: \(error)")
-                #endif
-            }
+            self.saveContex()
         }
     }
     
@@ -141,9 +156,18 @@ extension CoreDataService: ListPostsPersistentStoreType {
                    let title = listPost.title,
                    let titleContainer = NonEmptyContainer(title) {
                     
-                    return PostListDataModel(id: idContainer,
-                                             title: titleContainer,
-                                             imageData:listPost.image?.data )
+                    if let imageEntity = listPost.image,
+                       let data = imageEntity.data {
+                        return PostListDataModel(id: idContainer,
+                                                 title: titleContainer,
+                                                 imageData:data)
+                    }
+                    else {
+                        return PostListDataModel(id: idContainer,
+                                                 title: titleContainer,
+                                                 imageData: nil)
+                    }
+                    
                 }
                 else {
                     return nil
@@ -163,5 +187,35 @@ extension CoreDataService: ListPostsPersistentStoreType {
         }
     }
     
+    func saveIfNeeded() {
+        self.writeContext.perform {
+            if self.writeContext.hasChanges {
+                self.saveContex(andWait: true)
+            }
+        }
+    }
     
+    func updateImageData(_ data: Data?, forListPostWith id: String, saveImmadiately: Bool = false) {
+        let request = ListPost.fetchRequest()
+        
+        request.predicate = NSPredicate.init(format: "id == %@", id)
+        
+        self.writeContext.perform {
+            do {
+                let listItems = try self.writeContext.fetch(request)
+                if let listPostItem = listItems.first {
+                    listPostItem.image?.data = data
+                }
+                
+                if saveImmadiately, self.writeContext.hasChanges {
+                    self.saveContex(andWait: true)
+                }
+            }
+            catch {
+                
+            }
+        }
+    }
+    
+
 }

@@ -5,7 +5,8 @@
 //  Created by Ivan_Tests on 26.04.2025.
 //
 
-
+import Foundation
+import UIKit
 
 protocol InteractorType {
     func onViewDidLoad()
@@ -58,17 +59,7 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
     private func handleFetchResult(_ result:Result<[PostListDataModel], FetchError>) {
         switch result {
         case .success(let fetchedItems):
-            
             presenter.receiveLoadedPostItems(fetchedItems)
-            
-            //start loading images for loaded posts if needed
-            let postsWithoutImage = fetchedItems.filter { postListDataModel in
-                postListDataModel.imageData == nil
-            }
-            
-            if !postsWithoutImage.isEmpty {
-                loadImagesFor(posts:postsWithoutImage)
-            }
             
         case .failure(let error):
             print("Interactor handling error: \(error)")
@@ -91,20 +82,136 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             case .failure(let error):
                 print("Error Loading batch for page '\(page)': \(error)")
             case .success(let photoInfos):
+                //store to cache and persist if didSetup
                 self.worker.receiveLoadedInfos(photoInfos)
-                if self.worker.currentPage == 0 {
-                    
-                    self.worker.fetchInitialData { [weak self] result in
-                        self?.handleFetchResult(result)
-                    }
-                }
+                
+                self.handleBatchLoadingFor(page:page, with: photoInfos)
             }
         }
         
         
     }
     
-    private func loadImagesFor(posts:[PostListDataModel]) {
+    private func handleBatchLoadingFor(page:Int, with photoInfos:[PhotoInfo]) {
+        print("\(#function)")
+        self.worker.fetchDataFor(page) {[weak self] fetchResult in
+            print("\(#function) completion")
+            
+            switch fetchResult {
+            case .success(let postListItems):
+                    self?.presenter.receiveLoadedPostItems(postListItems)
+                    
+                    let postIDsWithoutImages = postListItems.filter({$0.imageData == nil}).map({$0.id})
+                    let idsSet:Set<String> = Set(postIDsWithoutImages.map{$0.value})
+                    
+                    let filteredPhotoItems = photoInfos.filter {idsSet.contains("\($0.id)") }
+                    
+                    
+                    let toLoadPhotos:[(postId:Int, src:NonEmptyContainer<String>)] = filteredPhotoItems.compactMap({
+                        if let nonEmptySource = NonEmptyContainer($0.imgSrc) {
+                            return ($0.id, nonEmptySource)
+                        }
+                        return nil
+                    })
+                    
+                    if !toLoadPhotos.isEmpty {
+                        self?.loadImagesFor(postsWithImageSources: toLoadPhotos)
+                    }
+                
+            case .failure(let fetchError):
+                print("\(#function) Error: \(fetchError)")
+            }
+        }
+            
+
+    }
+    
+    private func loadImagesFor(postsWithImageSources sources:[(postId:Int, src:NonEmptyContainer<String>)]) {
+        #if DEBUG
+        print("Loading images for sources: \(sources)")
+        #endif
         
+        let group = DispatchGroup()
+        let count = sources.count
+        
+        for _ in 0..<count {
+            group.enter()
+        }
+        
+        DispatchQueue.concurrentPerform(iterations: count, execute: {[weak self, sources] iteration in
+            let input = sources[iteration]
+            let postId = input.postId
+            
+            guard let strongSelf = self else {
+                group.leave()
+                return
+            }
+            
+            let source:NonEmptyContainer<String>
+            if input.src.value.hasPrefix("http:") {
+                let safenedString = input.src.value.replacingOccurrences(of: "http:", with: "https:")
+                source = NonEmptyContainer(safenedString)!
+            }
+            else {
+                source = input.src
+            }
+            
+            #if DEBUG
+            print("Start loading image for \(postId)")
+            #endif
+            
+            self?.apiCaller.loadImageData(for: source) { result in
+                switch result {
+                case .success(let imageData):
+                    #if DEBUG
+                    print("Success loading image for \(postId)")
+                    #endif
+                    
+                    
+                    
+                    
+                    var snapshotData:Data?
+                    //Update persistent Storage
+                    if let image = UIImage(data: imageData){//}, scale: UIScreen.main.scale) {
+                        if image.size.width > 100 || image.size.height > 100 {
+                            let snapshotImage = image.aspectFittedToHeight(100, newWidth: 100)
+                            snapshotData = snapshotImage.jpegData(compressionQuality: 100)
+                        }
+                        else {
+                            snapshotData = imageData
+                        }
+                    }
+                    
+                    if let snapData = snapshotData {
+                        //update UI
+                        DispatchQueue.main.async {[weak strongSelf, postId, snapData] in
+                            guard let self = strongSelf else {
+                                return
+                            }
+                            self.presenter.updatePost(postId: postId, withImageData: snapData)
+                        }
+                        
+                        guard let dataContainer = NonEmptyContainer(snapData) else {
+                            return
+                        }
+                        
+                        self?.worker.receiveData(dataContainer, forImageWith: postId)
+                    }
+                    
+                case .failure(let error):
+                    #if DEBUG
+                    print("Failed to load image for \(postId): \(error)")
+                    #endif
+                }
+                group.leave()
+            }
+        })
+        
+        group.notify(queue: DispatchQueue.main) {[weak self] in
+            // here is potentially not secure saving -
+            // the write context can be still updating image data for some List post images
+            self?.worker.saveIfNeeded()
+        }
+       
     }
 }

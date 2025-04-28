@@ -31,6 +31,7 @@ class NetworkService {
     let apiKey:String
     private let decoder:JSONDecoder
     private var session:URLSession
+    private var currentBatchDataTask:URLSessionDataTask?
     
     init(apiKey: NonEmptyContainer<String>) {
         
@@ -76,11 +77,14 @@ class NetworkService {
 extension NetworkService:NetworkAPICaller {
     
     func getBatch(page:Int, completion:@escaping (Result<[PhotoInfo], any Error>) -> ()) {
+        if let _ = currentBatchDataTask {
+            return
+        }
         
-        let api = API.bySOL(page: page, cameraType: .NAVCAM)
+        let api = API.bySOL(page: page, cameraType: .all)
         var queryParameters = api.urlParameters
         queryParameters["api_key"] = self.apiKey
-        queryParameters["sol"] = 1000
+        queryParameters["sol"] = 1500
         
         guard var url = URL(string: api.baseURL) else {
             return
@@ -116,6 +120,9 @@ extension NetworkService:NetworkAPICaller {
             url = newURL
         }
         
+        #if DEBUG
+        print("\(#function) Requesting address: \(url.absoluteString)")
+        #endif
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
@@ -134,7 +141,8 @@ extension NetworkService:NetworkAPICaller {
                     let batchResponse:BatchItemsResopnse = try self.decoder.decode(BatchItemsResopnse.self, from: data)
                     
                     guard !batchResponse.photos.isEmpty else {
-                        completion(.success([PhotoInfo]()))
+                        completion(.failure(NetworkAPICallerError.networkingError(.badResponseData)))
+                        self.currentBatchDataTask = nil
                         return
                     }
                     
@@ -145,13 +153,23 @@ extension NetworkService:NetworkAPICaller {
                     completion(.failure(NetworkAPICallerError.decodingError) )
                 }
             }
+            
+            self.currentBatchDataTask = nil
         })
         
+        self.currentBatchDataTask = task
         task.resume()
+        
     }
     
     
     func loadImageData(for urlString:NonEmptyContainer<String>, completion: @escaping (Result<Data, any Error>) -> ()) {
+        
+        
+        guard urlString.value.hasPrefix("https:") else {
+            completion(.failure(NetworkingError.badURL))
+            return
+        }
         guard let url = URL(string: urlString.value) else {
             completion(.failure(NetworkingError.badURL))
             return
@@ -159,6 +177,10 @@ extension NetworkService:NetworkAPICaller {
         
         
         let request = URLRequest(url: url)
+        
+        #if DEBUG
+        print("\(#function) Requesting address: \(request.url!.absoluteString)")
+        #endif
         
         let task =
         session.dataTask(with: request) {[weak self] dataOrNil, responseOrNil, errorOrNil in
