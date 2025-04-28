@@ -92,6 +92,12 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
                 print("Error Loading batch for page '\(page)': \(error)")
             case .success(let photoInfos):
                 self.worker.receiveLoadedInfos(photoInfos)
+                if self.worker.currentPage == 0 {
+                    
+                    self.worker.fetchInitialData { [weak self] result in
+                        self?.handleFetchResult(result)
+                    }
+                }
             }
         }
         

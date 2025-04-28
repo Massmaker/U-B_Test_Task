@@ -123,7 +123,6 @@ extension ListScreenViewController : ListScreenViewControllerType {
     
     func updatePost(id:Int, with imageData:Data) {
         
-        
         if let index = self.postItems.firstIndex(where: {$0.id.value == "\(id)"}) {
             var toUpdate = self.postItems[index]
             
@@ -138,13 +137,7 @@ extension ListScreenViewController : ListScreenViewControllerType {
                 snapshot.reloadItems([listModel])
                 dataSource.apply(snapshot, animatingDifferences: true)
             }
-            
         }
-        
-        
-        
-        
-        
     }
 }
 
