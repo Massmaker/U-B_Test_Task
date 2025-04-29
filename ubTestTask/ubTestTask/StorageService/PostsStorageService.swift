@@ -112,6 +112,9 @@ class PostsStorageService<P:ListPostsPersistentStoreType> {
     private func savePostModelsToCache(_ postModels:[PostListDataModel]) {
         let sortedById = postModels.sorted(by: {$0.id.value < $1.id.value})
         self.cachedPosts.append(contentsOf: sortedById)
+        
+        self.cachedPostIDs.formUnion(sortedById.map({$0.id.value}))
+        
     }
     
     /// - Returns: an array of zero or more `PostListDataModel` s

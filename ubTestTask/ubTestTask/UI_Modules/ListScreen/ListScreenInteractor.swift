@@ -35,6 +35,7 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
     private var worker:W
     private let apiCaller:N
     
+    private var lastFetchError:FetchError?
     
     init(presenter: P, worker:W, apiCaller:N) {
         self.presenter = presenter
@@ -50,12 +51,21 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
     
     func onScrolledToEnd() {
         logger.notice(#function)
+        
+        guard canLoadMore() else {
+            return
+        }
+        
         worker.fetchNextPageData { [weak self] fetchResult in
             self?.handleFetchResult(fetchResult)
         }
     }
     
     func loadNextBatch() {
+        guard canLoadMore() else {
+            return
+        }
+        
         worker.fetchNextPageData { [weak self] fetchResult in
             self?.handleFetchResult(fetchResult)
         }
@@ -77,6 +87,7 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
                 startNetworkLoadingPosts()
             case .partialResultFetched(let fetchedPartialBatch):
                 print("\(#file). \(#function). Partial Result: '\(fetchedPartialBatch.count)' Items")
+                self.lastFetchError = error
             }
         }
     }
@@ -97,8 +108,6 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
                 self.handleBatchLoadingFor(page:page, with: photoInfos)
             }
         }
-        
-        
     }
     
     private func handleBatchLoadingFor(page:Int, with photoInfos:[PhotoInfo]) {
@@ -131,8 +140,6 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
                 print("\(#function) Error: \(fetchError)")
             }
         }
-            
-
     }
     
     private func loadImagesFor(postsWithImageSources sources:[(postId:Int, src:NonEmptyContainer<String>)]) {
@@ -222,5 +229,19 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             self?.worker.saveIfNeeded()
         }
        
+    }
+    
+    private func canLoadMore() -> Bool {
+        guard let error = self.lastFetchError else {
+            return true
+        }
+        
+        switch error {
+        case .noDataFetched:
+            return true
+        case .partialResultFetched: //(let array):
+            return false
+        }
+        
     }
 }

@@ -28,6 +28,7 @@ class ListScreenPresenter:ListScreenPresenterType {
     }
     
     func receiveLoadedPostItems(_ postItems:[PostListDataModel]) {
+        
         DispatchQueue.main.async {[weak self] in
             self?.listVC?.receivePostItems(postItems)
         }

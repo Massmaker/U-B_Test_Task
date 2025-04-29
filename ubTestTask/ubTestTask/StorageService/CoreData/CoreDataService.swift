@@ -6,6 +6,7 @@
 //
 
 import CoreData
+fileprivate let logger = createLogger(subsystem: "Persistent_Storage", category: "CoreDataService")
 
 protocol PostListDataModelStorage {
     func getListPosts(page:Int, pageSize:Int) throws (PostListDataModelStorageError) -> [PostListDataModel]
@@ -49,7 +50,7 @@ class CoreDataService {
             if let options = persistentStore.options {
                 let type = persistentStore.type
 
-                print("Store: '\(type)', Options: \(options)")
+                logger.info("Store: '\(type)', Options: \(options)")
 
             }
 #endif
@@ -78,11 +79,11 @@ class CoreDataService {
         let saveOp = {[unowned self] in
             do {
                 try self.writeContext.save()
+                
+                logger.info("\(#function) \(andWait) Saved")
             }
             catch {
-#if DEBUG
-                print("\(#function) Failed to save private context: \(error)")
-#endif
+                logger.warning("\(#function) Failed to save private context: \(error)")
             }
         }
         
@@ -104,20 +105,18 @@ extension CoreDataService: ListPostsPersistentStoreType {
             
             listPosts.forEach { photoInfo in
                 
-                let listPost = ListPost(context: self.writeContext)
+                let listPost = ListPost(context: self.writeContext) //also inserts into context
                 listPost.title = photoInfo.displayTitle
                 listPost.id = "\(photoInfo.id)"
                 
-                let imageEntity = ListPostImage(context: self.writeContext)
+                let imageEntity = ListPostImage(context: self.writeContext) //also inserts into context
                 imageEntity.imageURL = photoInfo.imgSrc
                 
                 //assign relations
                 imageEntity.listPost = listPost
                 listPost.image = imageEntity
-//                self.writeContext.insert(listPost)
-//                self.writeContext.insert(imageEntity)
+
             }
-            
             
             guard writeContext.hasChanges else {
                 return
@@ -150,7 +149,7 @@ extension CoreDataService: ListPostsPersistentStoreType {
             if fetchedEntries.isEmpty {
                 return []
             }
-            
+            //fetchedEntries[safe:]
             let mappedPostItems = fetchedEntries.compactMap { listPost in
                 
                 if let postId = listPost.id,
@@ -176,14 +175,14 @@ extension CoreDataService: ListPostsPersistentStoreType {
                 }
                 
             }
-            #if DEBUG
-            print("\(#file) \(#function) fetched \(mappedPostItems.count) list posts")
-            #endif
+            
+            logger.info("\(#function) fetched \(mappedPostItems.count) list posts")
+            
             return mappedPostItems
         }
         catch (let mainContextFetchError){
             
-            print("Fetch error: \(mainContextFetchError)")
+            logger.error("Fetch error: \(mainContextFetchError)")
             
             throw PersistentStoreError.internalError(mainContextFetchError)
         }
