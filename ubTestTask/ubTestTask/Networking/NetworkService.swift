@@ -6,7 +6,7 @@
 //
 
 import Foundation
-
+fileprivate let logger = createLogger(subsystem:"Networking", category:"NetworkService")
 
 import Foundation
 protocol NetworkAPICaller {
@@ -120,9 +120,9 @@ extension NetworkService:NetworkAPICaller {
             url = newURL
         }
         
-        #if DEBUG
-        print("\(#function) Requesting address: \(url.absoluteString)")
-        #endif
+        
+        logger.notice("\(#function) Requesting address: \(url.absoluteString)")
+        
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
@@ -137,6 +137,7 @@ extension NetworkService:NetworkAPICaller {
             case .failure(let networkingError):
                 completion(.failure(NetworkAPICallerError.networkingError(networkingError)))
             case .success(let data):
+                logger.notice("\(#function) Success loading")
                 do {
                     let batchResponse:BatchItemsResopnse = try self.decoder.decode(BatchItemsResopnse.self, from: data)
                     
@@ -178,9 +179,7 @@ extension NetworkService:NetworkAPICaller {
         
         let request = URLRequest(url: url)
         
-        #if DEBUG
-        print("\(#function) Requesting address: \(request.url!.absoluteString)")
-        #endif
+        logger.notice("\(#function) Requesting address: \(request.url!.absoluteString)")
         
         let task =
         session.dataTask(with: request) {[weak self] dataOrNil, responseOrNil, errorOrNil in

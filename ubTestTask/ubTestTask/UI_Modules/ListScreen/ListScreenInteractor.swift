@@ -8,6 +8,8 @@
 import Foundation
 import UIKit
 
+fileprivate let logger = createLogger(subsystem: "ListScreenModule", category: "Interactor")
+
 protocol InteractorType {
     func onViewDidLoad()
     func onViewWillAppear(_ animated:Bool)
@@ -22,12 +24,12 @@ extension InteractorType {
 
 protocol ListScreenInteractorType:InteractorType {
     func loadNextBatch()
-    func onItemSelected(at index:Int)
+    func onScrolledToEnd()
+    func onItemSelected(withId itemId:NonEmptyContainer<String>)
 }
 
 
 class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType, N:NetworkAPICaller> : ListScreenInteractorType {
-    
     
     private var presenter: P
     private var worker:W
@@ -46,13 +48,20 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
         }
     }
     
+    func onScrolledToEnd() {
+        logger.notice(#function)
+        worker.fetchNextPageData { [weak self] fetchResult in
+            self?.handleFetchResult(fetchResult)
+        }
+    }
+    
     func loadNextBatch() {
         worker.fetchNextPageData { [weak self] fetchResult in
             self?.handleFetchResult(fetchResult)
         }
     }
     
-    func onItemSelected(at index:Int) {
+    func onItemSelected(withId itemId:NonEmptyContainer<String>) {
         //TODO: TODO: Navigate to Details Screen
     }
     
@@ -101,7 +110,7 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             case .success(let postListItems):
                     self?.presenter.receiveLoadedPostItems(postListItems)
                     
-                    let postIDsWithoutImages = postListItems.filter({$0.imageData == nil}).map({$0.id})
+                    let postIDsWithoutImages = postListItems.filter({$0.image == nil}).map({$0.id})
                     let idsSet:Set<String> = Set(postIDsWithoutImages.map{$0.value})
                     
                     let filteredPhotoItems = photoInfos.filter {idsSet.contains("\($0.id)") }

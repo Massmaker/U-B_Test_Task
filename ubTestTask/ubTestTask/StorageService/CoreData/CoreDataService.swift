@@ -95,6 +95,8 @@ class CoreDataService {
     }
 }
 
+import UIKit
+
 extension CoreDataService: ListPostsPersistentStoreType {
     
     func appendListPostItems(_ listPosts: [PhotoInfo]) {
@@ -160,12 +162,12 @@ extension CoreDataService: ListPostsPersistentStoreType {
                        let data = imageEntity.data {
                         return PostListDataModel(id: idContainer,
                                                  title: titleContainer,
-                                                 imageData:data)
+                                                 image:UIImage(data:data))
                     }
                     else {
                         return PostListDataModel(id: idContainer,
                                                  title: titleContainer,
-                                                 imageData: nil)
+                                                 image: nil)
                     }
                     
                 }

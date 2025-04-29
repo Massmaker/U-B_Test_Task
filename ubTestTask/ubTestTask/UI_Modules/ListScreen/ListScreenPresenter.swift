@@ -35,11 +35,11 @@ class ListScreenPresenter:ListScreenPresenterType {
     }
     
     func updatePost(postId:Int, withImageData data:Data) {
-//        guard let image = UIImage(data: data, scale: UIScreen.main.scale) else {
-//            return
-//        }
+        guard let image = UIImage(data: data, scale: UIScreen.main.scale) else {
+            return
+        }
         
-        listVC?.updatePost(id: postId, with: data)
+        listVC?.updatePost(id: postId, with: image)
         
     }
 }
