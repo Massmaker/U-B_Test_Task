@@ -59,7 +59,7 @@ class ListScreenViewController: UIViewController {
     //MARK: - VC Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        logger.notice("\(#function)")
         navigationItem.title = "List"
         
         setupSubviews()
@@ -75,13 +75,13 @@ class ListScreenViewController: UIViewController {
     
     override func viewWillAppear(_ animated:Bool) {
         super.viewWillAppear(animated)
-        
+        logger.notice("\(#function)")
         interactor?.onViewWillAppear(animated)
     }
     
     override func viewDidAppear(_ animated:Bool) {
         super.viewDidAppear(animated)
-        
+        logger.notice("\(#function)")
     }
     
     
@@ -108,9 +108,9 @@ class ListScreenViewController: UIViewController {
     
     override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
         //presumably iPad is rotating
-        print("\(#function) Size Rotating to \(size.width) X \(size.height)")
+        logger.notice("\(#function) Size Rotating to \(size.width) X \(size.height)")
         coordinator.animateAlongsideTransition(in: nil, animation: nil) { context in
-            print("\(#function) Size Finished rotation in \(context.transitionDuration)")
+            logger.notice("\(#function) Size Finished rotation in \(context.transitionDuration)")
         }
 
         super.viewWillTransition(to: size, with: coordinator)
@@ -143,7 +143,7 @@ class ListScreenViewController: UIViewController {
         var snapshot = collectionDataSource.snapshot()
         
         snapshot.appendSections([Section.main])
-        snapshot.appendItems([PostListDataModel](), toSection: .main)
+//        snapshot.appendItems([PostListDataModel](), toSection: .main)
         collectionDataSource.apply(snapshot)
     }
     
@@ -266,48 +266,55 @@ extension ListScreenViewController : ListScreenViewControllerType {
     }
     
     func updatePost(id:Int, with image:UIImage) {
-        logger.notice("\(#function)")
+        
         
         var snapshot = collectionDataSource.snapshot()
         let stringId:String = "\(id)"
         let models = snapshot.itemIdentifiers(inSection: Section.main)
         
-        if let model = models.first(where: {$0.id.value == stringId}) {
+        guard let model = models.first(where: {$0.id.value == stringId}) else {
+            return
+        }
+        
+        logger.notice("\(#function)")
+        
+        let updated = PostListDataModel(id: model.id, title: model.title, image: image)
+       
+        if let path = collectionDataSource.indexPath(for: model) {
+            let nextPath = NSIndexPath(item: path.item + 1, section: path.section)
             
-            let updated = PostListDataModel(id: model.id, title: model.title, image: image)
-            
-            
-            
-            
-            if let path = collectionDataSource.indexPath(for: model) {
-                let nextPath = NSIndexPath(item: path.item + 1, section: path.section)
+            if path.item == models.count - 1 {
+                snapshot.deleteItems([model])
+                snapshot.appendItems([updated])
+                snapshot.reconfigureItems([updated])
                 
-                if path.item == models.count - 1 {
-                    snapshot.deleteItems([model])
-                    snapshot.appendItems([updated])
-                    snapshot.reloadItems([updated])
-                    collectionDataSource.apply(snapshot) {[unowned self] in
-                        logger.notice("\(#function) after appending")
-                        var newSnapshot = collectionDataSource.snapshot()
-                        newSnapshot.reloadItems([updated])
-                        collectionDataSource.apply(newSnapshot)
-                    }
-                }
-                else if let nextModel = models[safe: nextPath.item] {
-                    snapshot.deleteItems([model])
-                    snapshot.insertItems([updated], beforeItem: nextModel)
+                collectionDataSource.apply(snapshot) {[unowned self] in
+                    logger.notice("\(#function) after appending")
+//                    var newSnapshot = collectionDataSource.snapshot()
+////                    newSnapshot.reloadItems([updated]) //this fixes the cell reloading
+//                    newSnapshot.reconfigureItems([updated]) //this also fixes the cell reloading but image assignment is not "smoothly" animated - simply set without animation of the cell
+//                    collectionDataSource.apply(newSnapshot)
                     
-                    collectionDataSource.apply(snapshot, completion: {[unowned self] in
-                        logger.notice("\(#function) after insetrion")
-                        var newSnapshot = collectionDataSource.snapshot()
-                        newSnapshot.reloadItems([updated])
-                        collectionDataSource.apply(newSnapshot)
-                        
-                    })
+                    
                 }
             }
-            
-            
+            else if let nextModel = models[safe: nextPath.item] {
+                snapshot.deleteItems([model])
+                snapshot.insertItems([updated], beforeItem: nextModel)
+                snapshot.reconfigureItems([updated])
+                
+                collectionDataSource.apply(snapshot, completion: {[unowned self] in
+                    logger.notice("\(#function) after insertion")
+//                    var newSnapshot = collectionDataSource.snapshot()
+////                    newSnapshot.reloadItems([updated])
+//                    newSnapshot.reconfigureItems([updated])
+//                    collectionDataSource.apply(newSnapshot)
+                    
+                })
+            }
+            else {
+                fatalError("Unhandled condition in List Screen")
+            }
         }
     }
     
@@ -414,7 +421,10 @@ extension ListScreenViewController:UIScrollViewDelegate {
 //            interactor?.loadNextBatch()
 //        }
         
-        let lastVisibleItemPaths = self.collection.indexPathsForVisibleItems
+        let lastVisibleItemPaths:[IndexPath] = self.collection.indexPathsForVisibleItems
+            .sorted(by: {lhs, rhs in
+                lhs.item < rhs.item
+            })
         
         guard !lastVisibleItemPaths.isEmpty else {
             return
@@ -452,6 +462,7 @@ extension ListScreenViewController:UIScrollViewDelegate {
             isScrolling = true
         }
     }
+    
     
 }
 
