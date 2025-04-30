@@ -9,10 +9,24 @@
 import UIKit
 
 /// a model for displaying a list item with a small image size for UI performance ( list, scrolling...)
-struct PostListDataModel: ImageContainer, Hashable  {
+struct PostListDataModel: ListItemUIModelType, Hashable  {
     let id:NonEmptyContainer<String>
     let title:NonEmptyContainer<String>
-    var image:UIImage?
+    private(set) var image:UIImage?
+    
+    
+    mutating func setImage(_ image:UIImage?) {
+        self.image = image
+    }
+    
+    mutating func setImageData(_ data:Data?) {
+        guard let imageData = data, let image = UIImage(data:imageData) else {
+            self.image = nil
+            return
+        }
+        
+        self.image = image
+    }
     
     static func == (lhs: PostListDataModel, rhs: PostListDataModel) -> Bool {
         lhs.id.value == rhs.id.value //&& lhs.title.value == rhs.id.value && lhs.image == rhs.image
@@ -40,7 +54,5 @@ struct PostDetailsDataModel: ImageContainer {
 }
 
 
-protocol ImageContainer {
-    var image:UIImage? { get }
-}
+
 

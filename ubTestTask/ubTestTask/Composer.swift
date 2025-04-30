@@ -56,11 +56,7 @@ class Composer {
     
         let persistentStore = CoreDataService()
         
-        let storageService = PostsStorageService(persistentStore: persistentStore)
-        
-        let worker = ListScreenWorker(cache: storageService)
-        
-        let interactor = ListScreenInteractor(presenter: presenter, worker: worker, apiCaller: self.instance.networkService)
+        let interactor = ListScreenInteractor(presenter: presenter, store: persistentStore, apiCaller: self.instance.networkService)
         
         vc.interactor = interactor
         vc.router = ListScreenRouter()

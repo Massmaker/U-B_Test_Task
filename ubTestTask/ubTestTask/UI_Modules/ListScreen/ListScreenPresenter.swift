@@ -12,14 +12,16 @@ import UIKit
 
 
 protocol ListScreenPresenterType {
-    func receiveLoadedPostItems(_ postItems:[PostListDataModel])
-    func updatePost(postId:Int, withImageData data:Data)
+    var displayedPostsCount:Int{get}
+    func receiveLoadedPostItems(_ postItems:[ListItemUIModelType])
+    func updatePost(_ post:ListItemUIModelType)
 }
 
 
 
 class ListScreenPresenter:ListScreenPresenterType {
     private weak var listVC:ListScreenViewControllerType?
+    private(set) var displayedPostsCount:Int = 0
     
     init(viewController:ListScreenViewController) {
         self.listVC = viewController
@@ -27,21 +29,19 @@ class ListScreenPresenter:ListScreenPresenterType {
         viewController.navigationItem.largeTitleDisplayMode = .never
     }
     
-    func receiveLoadedPostItems(_ postItems:[PostListDataModel]) {
+    func receiveLoadedPostItems(_ postItems:[ListItemUIModelType]) {
+        displayedPostsCount += postItems.count
+        let uiModels = postItems.map({
+            PostListDataModel(id: $0.id, title: $0.title, image: $0.image)
+        })
         
         DispatchQueue.main.async {[weak self] in
-            self?.listVC?.receivePostItems(postItems)
+            self?.listVC?.receivePostItems(uiModels)
         }
-        
     }
     
-    func updatePost(postId:Int, withImageData data:Data) {
-        guard let image = UIImage(data: data, scale: UIScreen.main.scale) else {
-            return
-        }
-        
-        listVC?.updatePost(id: postId, with: image)
-        
+    func updatePost(_ post:ListItemUIModelType) {
+       
     }
 }
 

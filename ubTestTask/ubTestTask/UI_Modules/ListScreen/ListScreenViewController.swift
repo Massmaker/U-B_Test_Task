@@ -252,10 +252,6 @@ class ListScreenViewController: UIViewController {
 extension ListScreenViewController : ListScreenViewControllerType {
     func receivePostItems(_ items:[PostListDataModel]) {
         
-//        var snapshot = self.dataSource.snapshot()
-//        snapshot.appendItems(items, toSection: Section.main)
-//        dataSource.apply(snapshot, animatingDifferences: true)
-        
         var snapshot = self.collectionDataSource.snapshot(for: Section.main)
         
         snapshot.append(items)

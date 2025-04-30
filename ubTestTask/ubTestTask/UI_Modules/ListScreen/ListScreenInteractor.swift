@@ -29,23 +29,35 @@ protocol ListScreenInteractorType:InteractorType {
 }
 
 
-class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType, N:NetworkAPICaller> : ListScreenInteractorType {
+class ListScreenInteractor<P:ListScreenPresenterType, Store:PostListDataModelStorage, N:NetworkAPICaller> : ListScreenInteractorType {
     
     private var presenter: P
-    private var worker:W
+    
     private let apiCaller:N
-    
+    private let store:Store
     private var lastFetchError:FetchError?
-    
-    init(presenter: P, worker:W, apiCaller:N) {
+    private let pageSize = 25
+    init(presenter: P, store:Store, apiCaller:N) {
         self.presenter = presenter
-        self.worker = worker
+        self.store = store
         self.apiCaller = apiCaller
     }
     
     func onViewDidLoad() {
-        worker.fetchInitialData { [weak self] fetchResult in
-            self?.handleFetchResult(fetchResult)
+        
+        store.delegate = self
+        
+        do {
+            let postItems = try store.getListPosts(page: 0, pageSize: 25)
+            
+            let uiModels = postItems.map{
+                $0.uiModel
+            }
+            
+            presenter.receiveLoadedPostItems(uiModels)
+        }
+        catch {
+            
         }
     }
     
@@ -56,9 +68,7 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             return
         }
         
-        worker.fetchNextPageData { [weak self] fetchResult in
-            self?.handleFetchResult(fetchResult)
-        }
+        loadNextBatch()
     }
     
     func loadNextBatch() {
@@ -66,8 +76,19 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             return
         }
         
-        worker.fetchNextPageData { [weak self] fetchResult in
-            self?.handleFetchResult(fetchResult)
+        let pages = (presenter.displayedPostsCount / pageSize)
+        let nextPage = pages + 1
+        
+        do {
+            let postItems = try store.getListPosts(page: nextPage, pageSize: 25)
+            let uiModels = postItems.map{
+                $0.uiModel
+            }
+            
+            presenter.receiveLoadedPostItems(uiModels)
+        }
+        catch {
+            
         }
     }
     
@@ -88,64 +109,43 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             case .partialResultFetched(let fetchedPartialBatch):
                 print("\(#file). \(#function). Partial Result: '\(fetchedPartialBatch.count)' Items")
                 self.lastFetchError = error
+                presenter.receiveLoadedPostItems(fetchedPartialBatch)
+                
             }
         }
     }
     
     private func startNetworkLoadingPosts() {
-        let page = worker.currentPage
+        let currentPage = presenter.displayedPostsCount / pageSize
+        let apiRequestPage = currentPage + 1
         
-        apiCaller.getBatch(page: page) { [weak self, page] result in
+        apiCaller.getBatch(page: apiRequestPage) { [weak self, currentPage] result in
             guard let self else { return }
             
             switch result {
             case .failure(let error):
-                print("Error Loading batch for page '\(page)': \(error)")
+                print("Error Loading batch for page '\(currentPage)': \(error)")
             case .success(let photoInfos):
                 //store to cache and persist if didSetup
-                self.worker.receiveLoadedInfos(photoInfos)
+                self.store.receive(postListItems: photoInfos)
                 
-                self.handleBatchLoadingFor(page:page, with: photoInfos)
-            }
-        }
-    }
-    
-    private func handleBatchLoadingFor(page:Int, with photoInfos:[PhotoInfo]) {
-        print("\(#function)")
-        self.worker.fetchDataFor(page) {[weak self] fetchResult in
-            print("\(#function) completion")
-            
-            switch fetchResult {
-            case .success(let postListItems):
-                    self?.presenter.receiveLoadedPostItems(postListItems)
+                let tuples:[(postId: String, src: NonEmptyContainer<String>)] = photoInfos.compactMap{
                     
-                    let postIDsWithoutImages = postListItems.filter({$0.image == nil}).map({$0.id})
-                    let idsSet:Set<String> = Set(postIDsWithoutImages.map{$0.value})
-                    
-                    let filteredPhotoItems = photoInfos.filter {idsSet.contains("\($0.id)") }
-                    
-                    
-                    let toLoadPhotos:[(postId:Int, src:NonEmptyContainer<String>)] = filteredPhotoItems.compactMap({
-                        if let nonEmptySource = NonEmptyContainer($0.imgSrc) {
-                            return ($0.id, nonEmptySource)
-                        }
-                        return nil
-                    })
-                    
-                    if !toLoadPhotos.isEmpty {
-                        self?.loadImagesFor(postsWithImageSources: toLoadPhotos)
+                    if let srcContainer = NonEmptyContainer($0.imageSourceURLString) {
+                        return (postId:$0.identifier, src:srcContainer)
                     }
+                    return nil
+                }
                 
-            case .failure(let fetchError):
-                print("\(#function) Error: \(fetchError)")
+                self.loadImagesFor(postsWithImageSources:tuples)
             }
         }
     }
     
-    private func loadImagesFor(postsWithImageSources sources:[(postId:Int, src:NonEmptyContainer<String>)]) {
-        #if DEBUG
-        print("Loading images for sources: \(sources)")
-        #endif
+    private func loadImagesFor(postsWithImageSources sources:[(postId:String, src:NonEmptyContainer<String>)]) {
+        
+        logger.notice("Loading images for sources: \(sources)")
+        
         
         let group = DispatchGroup()
         let count = sources.count
@@ -176,7 +176,10 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             print("Start loading image for \(postId)")
             #endif
             
-            self?.apiCaller.loadImageData(for: source) { result in
+            strongSelf.apiCaller.loadImageData(for: source) {[postId, weak strongSelf] result in
+                
+                guard let self = strongSelf else { return }
+                
                 switch result {
                 case .success(let imageData):
                     #if DEBUG
@@ -186,32 +189,24 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
                     
                     
                     
-                    var snapshotData:Data?
+                    var iconData:Data?
                     //Update persistent Storage
                     if let image = UIImage(data: imageData){//}, scale: UIScreen.main.scale) {
                         if image.size.width > 100 || image.size.height > 100 {
                             let snapshotImage = image.aspectFittedToHeight(100, newWidth: 100)
-                            snapshotData = snapshotImage.jpegData(compressionQuality: 100)
+                            iconData = snapshotImage.jpegData(compressionQuality: 100)
                         }
                         else {
-                            snapshotData = imageData
+                            iconData = imageData
                         }
                     }
                     
-                    if let snapData = snapshotData {
-                        //update UI
-                        DispatchQueue.main.async {[weak strongSelf, postId, snapData] in
-                            guard let self = strongSelf else {
-                                return
-                            }
-                            self.presenter.updatePost(postId: postId, withImageData: snapData)
-                        }
-                        
-                        guard let dataContainer = NonEmptyContainer(snapData) else {
+                    if let data = iconData {
+                        guard let dataContainer = NonEmptyContainer(data) else {
                             return
                         }
                         
-                        self?.worker.receiveData(dataContainer, forImageWith: postId)
+                        self.store.setImageData(dataContainer.value, forListPostId: postId, saveImmediately: false)
                     }
                     
                 case .failure(let error):
@@ -226,7 +221,7 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
         group.notify(queue: DispatchQueue.main) {[weak self] in
             // here is potentially not secure saving -
             // the write context can be still updating image data for some List post images
-            self?.worker.saveIfNeeded()
+            self?.store.saveIfNeeded()
         }
        
     }
@@ -243,5 +238,14 @@ class ListScreenInteractor<P:ListScreenPresenterType, W:ListScreenDataWorkerType
             return false
         }
         
+    }
+}
+
+
+//MARK: - PostListDataModelStorageDelegate
+
+extension ListScreenInteractor:PostListDataModelStorageDelegate {
+    func listObjectsDidUpdate() {
+        logger.notice("Storage did Send Update Signal...")
     }
 }

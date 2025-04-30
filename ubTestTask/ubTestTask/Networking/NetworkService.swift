@@ -9,10 +9,8 @@ import Foundation
 fileprivate let logger = createLogger(subsystem:"Networking", category:"NetworkService")
 
 import Foundation
-protocol NetworkAPICaller {
-    func getBatch(page:Int, completion:@escaping (Result<[PhotoInfo], any Error>) -> ())
-    func loadImageData(for urlString:NonEmptyContainer<String>, completion: @escaping (Result<Data, any Error>) -> ())
-}
+
+
 
 
 enum NetworkingError:Error {
@@ -76,7 +74,8 @@ class NetworkService {
 
 extension NetworkService:NetworkAPICaller {
     
-    func getBatch(page:Int, completion:@escaping (Result<[PhotoInfo], any Error>) -> ()) {
+    func getBatch(page: Int, completion: @escaping (Result<[any ListItemInfoContainer], any Error>) -> ()) {
+
         if let _ = currentBatchDataTask {
             return
         }
@@ -142,10 +141,13 @@ extension NetworkService:NetworkAPICaller {
                     let batchResponse:BatchItemsResopnse = try self.decoder.decode(BatchItemsResopnse.self, from: data)
                     
                     guard !batchResponse.photos.isEmpty else {
+                        logger.notice("API Supplied No items in batch response")
                         completion(.failure(NetworkAPICallerError.networkingError(.badResponseData)))
                         self.currentBatchDataTask = nil
                         return
                     }
+                    
+                    logger.notice("API Supplied \(batchResponse.photos.count) items batch response")
                     
                     completion(.success(batchResponse.photos))
                     
@@ -235,5 +237,28 @@ struct RoverInfo:Decodable {
 extension PhotoInfo {
     var displayTitle:String {
         "\(rover.name)_\(rover.status)_\(camera.fullName)_\(earthDate)"
+    }
+}
+
+
+extension PhotoInfo:ListItemInfoContainer {
+    var date: Date {
+        earthDate
+    }
+    
+    var identifier: String {
+        "\(id)"
+    }
+    
+    var imageSourceURLString: String {
+        imgSrc
+    }
+    
+    var cameraName: String {
+        camera.fullName
+    }
+    
+    var roverName: String {
+        rover.name
     }
 }
