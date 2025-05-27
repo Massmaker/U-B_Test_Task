@@ -135,7 +135,7 @@ extension CoreDataService:PostListDataModelStorage {
         self.saveContex()
     }
     
-    func receive(postListItems:[ListItemInfoContainer]) {
+    func receive(postListItems:[any ListItemInfoContainer]) {
         writeContext.perform {[weak self] in
             guard let self else { return }
             

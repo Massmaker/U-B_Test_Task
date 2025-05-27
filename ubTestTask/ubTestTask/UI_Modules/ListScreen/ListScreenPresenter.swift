@@ -13,8 +13,8 @@ import UIKit
 
 protocol ListScreenPresenterType {
     var displayedPostsCount:Int{get}
-    func receiveLoadedPostItems(_ postItems:[ListItemUIModelType])
-    func updatePost(_ post:ListItemUIModelType)
+    func receiveLoadedPostItems(_ postItems:[any ListItemUIModelType])
+    func updatePost(_ post:any ListItemUIModelType)
 }
 
 
@@ -23,25 +23,32 @@ class ListScreenPresenter:ListScreenPresenterType {
     private weak var listVC:ListScreenViewControllerType?
     private(set) var displayedPostsCount:Int = 0
     
+    @MainActor
     init(viewController:ListScreenViewController) {
         self.listVC = viewController
         viewController.title = "Posts"
         viewController.navigationItem.largeTitleDisplayMode = .never
     }
     
-    func receiveLoadedPostItems(_ postItems:[ListItemUIModelType]) {
+    func receiveLoadedPostItems(_ postItems:[any ListItemUIModelType]) {
         displayedPostsCount += postItems.count
         let uiModels = postItems.map({
             PostListDataModel(id: $0.id, title: $0.title, image: $0.image)
         })
         
-        DispatchQueue.main.async {[weak self] in
-            self?.listVC?.receivePostItems(uiModels)
-        }
+       
+//        DispatchQueue.main.async { [weak self] in
+//            self?.listVC?.receivePostItems(uiModels)
+//        }
     }
     
-    func updatePost(_ post:ListItemUIModelType) {
-       
+    func updatePost(_ post:any ListItemUIModelType) {
+        
+        let uiModel = PostListDataModel(id: post.id, title: post.title, image: post.image)
+        
+//        DispatchQueue.main.async {[weak self] in
+//            self?.listVC?.updatePostItems([uiModel])
+//        }
     }
 }
 

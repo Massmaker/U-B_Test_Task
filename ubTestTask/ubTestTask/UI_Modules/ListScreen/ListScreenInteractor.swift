@@ -29,7 +29,7 @@ protocol ListScreenInteractorType:InteractorType {
 }
 
 
-class ListScreenInteractor<P:ListScreenPresenterType, Store:PostListDataModelStorage, N:NetworkAPICaller> : ListScreenInteractorType {
+class ListScreenInteractor<P:ListScreenPresenterType, Store:PostListDataModelStorage, N:NetworkAPICallerAsync> : ListScreenInteractorType {
     
     private var presenter: P
     
@@ -119,13 +119,13 @@ class ListScreenInteractor<P:ListScreenPresenterType, Store:PostListDataModelSto
         let currentPage = presenter.displayedPostsCount / pageSize
         let apiRequestPage = currentPage + 1
         
-        apiCaller.getBatch(page: apiRequestPage) { [weak self, currentPage] result in
-            guard let self else { return }
-            
-            switch result {
-            case .failure(let error):
-                print("Error Loading batch for page '\(currentPage)': \(error)")
-            case .success(let photoInfos):
+        Task {[weak self] in
+            guard let self else {
+                return
+            }
+            do {
+                let photoInfos = try await self.apiCaller.getBatch(page: apiRequestPage)
+                
                 //store to cache and persist if didSetup
                 self.store.receive(postListItems: photoInfos)
                 
@@ -139,89 +139,64 @@ class ListScreenInteractor<P:ListScreenPresenterType, Store:PostListDataModelSto
                 
                 self.loadImagesFor(postsWithImageSources:tuples)
             }
+            catch {
+                print("Error Loading batch for page '\(currentPage)': \(error)")
+            }
         }
     }
     
     private func loadImagesFor(postsWithImageSources sources:[(postId:String, src:NonEmptyContainer<String>)]) {
         
         logger.notice("Loading images for sources: \(sources)")
-        
-        
-        let group = DispatchGroup()
-        let count = sources.count
-        
-        for _ in 0..<count {
-            group.enter()
-        }
-        
-        DispatchQueue.concurrentPerform(iterations: count, execute: {[weak self, sources] iteration in
-            let input = sources[iteration]
-            let postId = input.postId
-            
-            guard let strongSelf = self else {
-                group.leave()
-                return
-            }
-            
-            let source:NonEmptyContainer<String>
-            if input.src.value.hasPrefix("http:") {
-                let safenedString = input.src.value.replacingOccurrences(of: "http:", with: "https:")
-                source = NonEmptyContainer(safenedString)!
-            }
-            else {
-                source = input.src
-            }
-            
-            #if DEBUG
-            print("Start loading image for \(postId)")
-            #endif
-            
-            strongSelf.apiCaller.loadImageData(for: source) {[postId, weak strongSelf] result in
-                
-                guard let self = strongSelf else { return }
-                
-                switch result {
-                case .success(let imageData):
-                    #if DEBUG
-                    print("Success loading image for \(postId)")
-                    #endif
-                    
-                    
-                    
-                    
-                    var iconData:Data?
-                    //Update persistent Storage
-                    if let image = UIImage(data: imageData){//}, scale: UIScreen.main.scale) {
-                        if image.size.width > 100 || image.size.height > 100 {
-                            let snapshotImage = image.aspectFittedToHeight(100, newWidth: 100)
-                            iconData = snapshotImage.jpegData(compressionQuality: 100)
+        Task {
+            await withTaskGroup { [weak self, sources] group in
+                for input in sources {
+                    group.addTask { [weak self, input] in
+                        
+                        guard let self else { return }
+                        
+                        let source:NonEmptyContainer<String>
+                        if input.src.value.hasPrefix("http:") {
+                            let safenedString = input.src.value.replacingOccurrences(of: "http:", with: "https:")
+                            source = NonEmptyContainer(safenedString)!
                         }
                         else {
-                            iconData = imageData
+                            source = input.src
                         }
-                    }
-                    
-                    if let data = iconData {
-                        guard let dataContainer = NonEmptyContainer(data) else {
-                            return
-                        }
+                        let postId = input.postId
+                        logger.notice("Start loading image for \(postId)")
                         
-                        self.store.setImageData(dataContainer.value, forListPostId: postId, saveImmediately: false)
+                        
+                        do {
+                            let imageData = try await self.apiCaller.loadImageData(for: source.value)
+                            
+                            var iconData:Data?
+                            //Update persistent Storage
+                            if let image = UIImage(data: imageData){//}, scale: UIScreen.main.scale) {
+                                if image.size.width > 100 || image.size.height > 100 {
+                                    let snapshotImage = image.aspectFittedToHeight(100, newWidth: 100)
+                                    iconData = snapshotImage.jpegData(compressionQuality: 100)
+                                }
+                                else {
+                                    iconData = imageData
+                                }
+                            }
+                            
+                            if let data = iconData {
+                                guard let dataContainer = NonEmptyContainer(data) else {
+                                    return
+                                }
+                                
+                                self.store.setImageData(dataContainer.value, forListPostId: postId, saveImmediately: false)
+                            }
+                        }
+                        catch {
+                            logger.error("Failed to load image for \(postId): \(error)")
+                        }
                     }
-                    
-                case .failure(let error):
-                    #if DEBUG
-                    print("Failed to load image for \(postId): \(error)")
-                    #endif
                 }
-                group.leave()
             }
-        })
-        
-        group.notify(queue: DispatchQueue.main) {[weak self] in
-            // here is potentially not secure saving -
-            // the write context can be still updating image data for some List post images
-            self?.store.saveIfNeeded()
+            
         }
        
     }

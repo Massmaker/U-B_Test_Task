@@ -18,17 +18,20 @@ fileprivate struct ApiKeyInfo:Decodable {
 /**
 This is a composition root for both List screen and the Details screen
 */
+@MainActor
 class Composer {
     
     private static let instance = Composer()
     
     let networkService:NetworkService
+    let netServiceActor:NetworkServiceActor
     
     private init() {
         
         guard let pathString = Bundle.main.path(forResource: "ApiKeyInfo", ofType: "plist"),
             let data = FileManager.default.contents(atPath: pathString)else {
             networkService = NetworkService.demo()
+            netServiceActor = NetworkServiceActor.demo()
             return
         }
         
@@ -38,12 +41,15 @@ class Composer {
             let info = try decoder.decode(ApiKeyInfo.self, from: data)
             guard let apiKey = NonEmptyContainer(info.apiKey) else {
                 networkService = NetworkService.demo()
+                netServiceActor = NetworkServiceActor.demo()
                 return
             }
             self.networkService = NetworkService(apiKey: apiKey)
+            self.netServiceActor = NetworkServiceActor(apiKey: apiKey)
         }
         catch {
             networkService = NetworkService.demo()
+            netServiceActor = NetworkServiceActor.demo()
         }
         
         
@@ -56,7 +62,7 @@ class Composer {
     
         let persistentStore = CoreDataService()
         
-        let interactor = ListScreenInteractor(presenter: presenter, store: persistentStore, apiCaller: self.instance.networkService)
+        let interactor = ListScreenInteractor(presenter: presenter, store: persistentStore, apiCaller: self.instance.netServiceActor)
         
         vc.interactor = interactor
         vc.router = ListScreenRouter()
@@ -78,5 +84,12 @@ class Composer {
 extension NetworkService {
     static func demo() -> NetworkService {
         NetworkService(apiKey: NonEmptyContainer("DEMO_KEY")!)
+    }
+}
+
+
+extension NetworkServiceActor {
+    static func demo() -> NetworkServiceActor {
+        NetworkServiceActor(apiKey: NonEmptyContainer("DEMO_KEY")!)
     }
 }

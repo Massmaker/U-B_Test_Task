@@ -12,7 +12,7 @@ protocol ImageContainer {
     var image:UIImage? { get }
 }
 
-protocol ListItemUIModelType:ImageContainer {
+protocol ListItemUIModelType:ImageContainer, Hashable {
     var id:NonEmptyContainer<String> {get}
     var title:NonEmptyContainer<String> {get}
     var image:UIImage? {get}
@@ -25,7 +25,7 @@ protocol ListModelResultType {
 }
 
 extension ListModelResultType {
-    var uiModel:ListItemUIModelType {
+    var uiModel:some ListItemUIModelType {
         guard let data = imageData else {
             return PostListDataModel(id: identifier, title: title)
         }
@@ -34,9 +34,33 @@ extension ListModelResultType {
     }
 }
 
+protocol DetailsItemUIModelType: ImageContainer {
+    var id:NonEmptyContainer<String>{get}
+    var title:NonEmptyContainer<String>{get}
+    var textString:NonEmptyContainer<String>{get}
+    var image:UIImage? {get}
+}
+
+protocol DetailsModelResultType {
+    var identifier: NonEmptyContainer<String> {get}
+    var title: NonEmptyContainer<String> {get}
+    var details:NonEmptyContainer<String> {get}
+    var imageData:Data? {get}
+}
+
+extension DetailsModelResultType {
+    var uiModel:DetailsItemUIModelType {
+        guard let data = imageData else {
+            return PostDetailsDataModel(id:identifier, title:title, textString:details)
+        }
+        
+        return PostDetailsDataModel(id:identifier, title:title, textString:details, image:UIImage(data: data))
+    }
+}
+
 //MARK: - Data models
 //downloadable data to persist and convert back into UI models
-protocol ListItemInfoContainer {
+protocol ListItemInfoContainer: Sendable {
     var date:Date {get}
     var identifier:String {get}
     var sol:Int {get}
@@ -46,31 +70,32 @@ protocol ListItemInfoContainer {
 }
 
 //MARK: - Errors
-enum PostListDataModelStorageError:Error {
+enum PostListDataModelStorageError: Error {
     case noData
     case partialResult([PostListDataModel])
 }
 
-enum PersistentStoreError:Error {
+enum PersistentStoreError: Error {
     case internalError((any Error)?)
 }
 
-enum FetchError:Error {
+enum FetchError: Error {
     case noDataFetched
     case partialResultFetched([PostListDataModel])
 }
 
 
 //MARK: -
-protocol PostListDataModelStorage :AnyObject{
+protocol PostListDataModelStorage: AnyObject {
     var delegate:(any PostListDataModelStorageDelegate)? {get set}
     func getListPosts(page:Int, pageSize:Int) throws (PostListDataModelStorageError) -> [ListModelResultType]
-    func receive(postListItems:[ListItemInfoContainer])
+    func receive(postListItems:[any ListItemInfoContainer])
     func setImageData(_ data:Data, forListPostId listPostId:String, saveImmediately:Bool)
     func saveIfNeeded()
 }
 
-protocol NetworkAPICaller {
-    func getBatch(page:Int, completion:@escaping (Result<[ListItemInfoContainer], any Error>) -> ())
-    func loadImageData(for urlString:NonEmptyContainer<String>, completion: @escaping (Result<Data, any Error>) -> ())
+protocol NetworkAPICallerAsync {
+    func getBatch(page:Int) async throws(NetworkAPICallerError) -> [any ListItemInfoContainer]
+    
+    func loadImageData(for pathURL:String) async throws(NetworkAPICallerError) -> Data
 }

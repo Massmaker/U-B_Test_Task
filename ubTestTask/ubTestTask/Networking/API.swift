@@ -18,26 +18,51 @@ enum CameraType:String {
 }
 
 enum API {
-    
-    
     case bySOL(page:Int, cameraType:CameraType)
-    
+}
+
+enum URLRequestMethod:String {
+    case get = "GET"
+    var httpMethod:String {
+        return self.rawValue.uppercased()
+    }
 }
 
 extension API {
-    var urlParameters:[String:Any] {
+    var urlPathParameters:[String:Any]? {
         switch self {
         case .bySOL(let page, let cameraType):
+            var params:[String:Any] = ["page":page, "sol":1500]
+            
             if let cameraValue = cameraType.lowercasedValue {
-                return ["page":page, "camera":cameraValue]
+                params["camera"] = cameraValue
             }
-            else {
-                return ["page":page]
-            }
+            return params
         }
     }
     
     var baseURL:String {
-        "https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos"
+        "https://api.nasa.gov/mars-photos/api/v1"
+    }
+    
+    var path:String {
+        switch self {
+        case .bySOL: //(let page, let cameraType):
+            return "/rovers/curiosity/photos"
+        }
+    }
+    
+    var method:URLRequestMethod {
+        switch self {
+        case .bySOL: //(let page, let cameraType):
+            return .get
+        }
+    }
+}
+
+
+extension API {
+    func requestPath() -> String {
+        baseURL.appending(path)
     }
 }

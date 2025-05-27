@@ -10,7 +10,7 @@ fileprivate let logger = createLogger(subsystem: "ListScreenModule", category: "
 
 protocol ListScreenViewControllerType: UIViewController {
     func receivePostItems(_ items:[PostListDataModel])
-    func updatePost(id:Int, with imageData:UIImage)
+    func updatePostItems(_ items:[PostListDataModel])
 }
 
 class ListScreenViewController: UIViewController {
@@ -250,6 +250,7 @@ class ListScreenViewController: UIViewController {
 }
 
 extension ListScreenViewController : ListScreenViewControllerType {
+    
     func receivePostItems(_ items:[PostListDataModel]) {
         
         var snapshot = self.collectionDataSource.snapshot(for: Section.main)
@@ -261,141 +262,46 @@ extension ListScreenViewController : ListScreenViewControllerType {
         })
     }
     
-    func updatePost(id:Int, with image:UIImage) {
+    func updatePostItems(_ items:[PostListDataModel]) {
         
         
         var snapshot = collectionDataSource.snapshot()
-        let stringId:String = "\(id)"
+        
+        items.forEach({item in
+            
         let models = snapshot.itemIdentifiers(inSection: Section.main)
         
-        guard let model = models.first(where: {$0.id.value == stringId}) else {
+        guard let model = models.first(where: {$0.id.value == item.id.value}) else {
             return
         }
         
         logger.notice("\(#function)")
         
-        let updated = PostListDataModel(id: model.id, title: model.title, image: image)
-       
-        if let path = collectionDataSource.indexPath(for: model) {
-            let nextPath = NSIndexPath(item: path.item + 1, section: path.section)
-            
-            if path.item == models.count - 1 {
-                snapshot.deleteItems([model])
-                snapshot.appendItems([updated])
-                snapshot.reconfigureItems([updated])
+            if let path = collectionDataSource.indexPath(for: model) {
+                let nextPath = NSIndexPath(item: path.item + 1, section: path.section)
                 
-                collectionDataSource.apply(snapshot) {[unowned self] in
-                    logger.notice("\(#function) after appending")
-//                    var newSnapshot = collectionDataSource.snapshot()
-////                    newSnapshot.reloadItems([updated]) //this fixes the cell reloading
-//                    newSnapshot.reconfigureItems([updated]) //this also fixes the cell reloading but image assignment is not "smoothly" animated - simply set without animation of the cell
-//                    collectionDataSource.apply(newSnapshot)
-                    
-                    
+                if path.item == models.count - 1 {
+                    snapshot.deleteItems([model])
+                    snapshot.appendItems([item])
+                }
+                else if let nextModel = models[safe: nextPath.item] {
+                    snapshot.deleteItems([model])
+                    snapshot.insertItems([item], beforeItem: nextModel)
+
+                }
+                else {
+                    fatalError("Unhandled condition in List Screen")
                 }
             }
-            else if let nextModel = models[safe: nextPath.item] {
-                snapshot.deleteItems([model])
-                snapshot.insertItems([updated], beforeItem: nextModel)
-                snapshot.reconfigureItems([updated])
-                
-                collectionDataSource.apply(snapshot, completion: {[unowned self] in
-                    logger.notice("\(#function) after insertion")
-//                    var newSnapshot = collectionDataSource.snapshot()
-////                    newSnapshot.reloadItems([updated])
-//                    newSnapshot.reconfigureItems([updated])
-//                    collectionDataSource.apply(newSnapshot)
-                    
-                })
-            }
-            else {
-                fatalError("Unhandled condition in List Screen")
-            }
-        }
-    }
-    
-//    func updatePost(id: Int, with imageData: Data) {
-//        dispatchPrecondition(condition: DispatchPredicate.onQueue(DispatchQueue.main))
-//        
-//        if isUpdating {
-//            updatesQueue.append {[weak self, id, imageData] in
-//                self?.updatePost(id: id, with: imageData)
-//            }
-//            return
-//        }
-//        
-//        guard let dataSource else {
-//            print("Data source snapshot is nil")
-//            isUpdating = false
-//            takeNextUpdateIfNeeded()
-//            return
-//        }
-//        
-//        isUpdating = true
-//    
-//        var currentSnapshot = dataSource.snapshot()
-//        
-//        var itemsToUpdate = currentSnapshot.itemIdentifiers(inSection: Section.main)
-//        
-//        guard let index = itemsToUpdate.firstIndex(where: {$0.id.value == "\(id)"}) else {
-//            print(" - No Items for \(id) in current secrion.")
-//            return
-//        }
-//        
-//        let listPostItem = itemsToUpdate[index]
-//        var toUpdate = listPostItem
-//        toUpdate.imageData = imageData
-//        
-//        currentSnapshot.deleteItems([listPostItem])
-//        
-//        if itemsToUpdate.count - index > 1 {
-//            let listPostItemNext = itemsToUpdate[index + 1]
-//            currentSnapshot.insertItems([toUpdate], beforeItem: listPostItemNext)
-//        }
-//        else {
-//            currentSnapshot.appendItems([toUpdate])
-//        }
-//        
-//        dataSource.apply(currentSnapshot, animatingDifferences: true, completion: {[weak self] in
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: {
-//                self?.isUpdating = false
-//                self?.takeNextUpdateIfNeeded()
-//            })
-//            
-//            print("DID Update Snapshot for \(id)")
-//        })
-//    }
-    
-    private func takeNextUpdateIfNeeded() {
-        isUpdating = false
-        guard !self.updatesQueue.isEmpty else {
-            return
-        }
-        
-        let nextWorkItem = self.updatesQueue.removeFirst()
+        })
             
-        nextWorkItem()
+        snapshot.reconfigureItems(items)
         
+        collectionDataSource.apply(snapshot)
     }
+    
 }
 
-//extension ListScreenViewController : UITableViewDelegate {
-//    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//        tableView.deselectRow(at: indexPath, animated: true)
-//        self.interactor?.onItemSelected(at: indexPath.row)
-//    }
-//    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
-//        if isScrolling {
-//            return
-//        }
-//
-//        if self.postItems.count > 1, indexPath.row == self.postItems.count - 1 {
-//            interactor?.loadNextBatch()
-//        }
-//    }
-//}
-
-  
     
 //MARK: Scrolling
 extension ListScreenViewController:UIScrollViewDelegate {

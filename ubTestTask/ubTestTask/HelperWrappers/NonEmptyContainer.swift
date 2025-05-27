@@ -6,7 +6,7 @@
 //
 
 import Foundation
-struct NonEmptyContainer<T:Collection> {
+struct NonEmptyContainer<T:Collection & Sendable> {
     private(set) var value:T
     init?(_ value: T) {
         guard !value.isEmpty else {
@@ -16,3 +16,8 @@ struct NonEmptyContainer<T:Collection> {
             
     }
 }
+
+//extension NonEmptyContainer:Sendable where T.Element:Sendable {
+//    
+//}
+

@@ -8,7 +8,7 @@
 import Foundation
 
 protocol DetailsScreenInteractorType {
-    
+    //TODO: TODO: Add Protocol methods and properties
 }
 
 

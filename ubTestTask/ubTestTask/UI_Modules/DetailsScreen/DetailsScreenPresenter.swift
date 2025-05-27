@@ -14,7 +14,8 @@ protocol DetailsScreenPresenterType {
 class DetailsScreenPresenter:DetailsScreenPresenterType {
     
     private weak var listVC:DetailsScreenViewController?
-
+    
+    @MainActor
     init(viewController:DetailsScreenViewController) {
         self.listVC = viewController
         viewController.navigationItem.largeTitleDisplayMode = .never
